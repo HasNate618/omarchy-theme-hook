@@ -7,14 +7,62 @@ if ! command -v zen-browser >/dev/null 2>&1; then
 fi
 
 find_default_profile() {
+    local ini=""
+    if [[ -f "$HOME/.config/zen/profiles.ini" ]]; then
+        ini="$HOME/.config/zen/profiles.ini"
+    elif [[ -f "$HOME/.zen/profiles.ini" ]]; then
+        ini="$HOME/.zen/profiles.ini"
+    else
+        return 1
+    fi
     awk -F= '
         /^\[Install/ { in_install=1 }
         in_install && /^Default=/ { print $2; exit }
-    ' "$HOME/.zen/profiles.ini"
+    ' "$ini"
 }
-default_profile="$HOME/.zen/$(find_default_profile)"
+default_profile="$(find_default_profile)"
+if [[ -n "$default_profile" && -d "$HOME/.config/zen/$default_profile" ]]; then
+    default_profile="$HOME/.config/zen/$default_profile"
+else
+    default_profile="$HOME/.zen/${default_profile}"
+fi
 
 echo $default_profile
+
+# Update only mod.sameerasw.zen_transparency_color to match background with 60% opacity
+set_zen_transparency() {
+    local prefs_file="$default_profile/prefs.js"
+    local pref_name='mod.sameerasw.zen_transparency_color'
+    local bg="${primary_background#\#}"
+    local alpha_hex="99"  # 60% opacity
+    local value="#${bg}${alpha_hex}"
+    mkdir -p "$(dirname "$prefs_file")"
+    if [[ -f "$prefs_file" ]]; then
+        if grep -q "user_pref(\"$pref_name\"" "$prefs_file"; then
+            sed -i.bak "s|user_pref(\"$pref_name\".*,user_pref(\"$pref_name\", \"$value\");|g" "$prefs_file"
+        else
+            echo "user_pref(\"$pref_name\", \"$value\");" >> "$prefs_file"
+        fi
+    else
+        echo "user_pref(\"$pref_name\", \"$value\");" > "$prefs_file"
+    fi
+}
+set_zen_transparency
+
+# Restart zen-browser to apply change and exit
+if pgrep -x "zen-browser" > /dev/null; then
+    pkill -x "zen-browser" > /dev/null
+    sleep 2
+    if pgrep -x "zen-browser" > /dev/null; then
+        pkill -9 -x "zen-browser" > /dev/null
+        sleep 1
+    fi
+    zen-browser > /dev/null &
+fi
+
+require_restart "zen-browser"
+success "Zen Browser transparency updated!"
+exit 0
 
 enable_userchrome() {
     local prefs_file="$default_profile/prefs.js"
