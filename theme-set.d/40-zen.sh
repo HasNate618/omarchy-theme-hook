@@ -45,7 +45,8 @@ set_zen_transparency() {
     mkdir -p "$(dirname "$prefs_file")"
     if [[ -f "$prefs_file" ]]; then
         if grep -q "user_pref(\"$pref_name\"" "$prefs_file"; then
-            sed -i.bak "s|user_pref(\"$pref_name\".*,user_pref(\"$pref_name\", \"$value\");|g" "$prefs_file"
+            # replace any existing user_pref line for this pref with the new value
+            sed -i.bak "s|user_pref(\\\"$pref_name\\\".*);|user_pref(\\\"$pref_name\\\", \\\"$value\\\");|g" "$prefs_file"
         else
             echo "user_pref(\"$pref_name\", \"$value\");" >> "$prefs_file"
         fi
