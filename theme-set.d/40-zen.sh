@@ -8,6 +8,7 @@ fi
 
 find_default_profile() {
     local ini=""
+    local ini_dir=""
     if [[ -f "$HOME/.config/zen/profiles.ini" ]]; then
         ini="$HOME/.config/zen/profiles.ini"
     elif [[ -f "$HOME/.zen/profiles.ini" ]]; then
@@ -15,16 +16,21 @@ find_default_profile() {
     else
         return 1
     fi
-    awk -F= '
-        /^\[Install/ { in_install=1 }
-        in_install && /^Default=/ { print $2; exit }
+    ini_dir="$(dirname "$ini")"
+    # prefer profile with Default=1, otherwise use first Profile Path
+    awk -F= -v ini_dir="$ini_dir" '
+    BEGIN { profile_count=0 }
+    /^\[Profile/ { profile_count++; path[profile_count]=""; isrel[profile_count]=1 }
+    /^Path=/ { path[profile_count]=$2 }
+    /^IsRelative=/ { isrel[profile_count]=$2 }
+    /^Default=/ { if ($2==1) { print (isrel[profile_count]==1 ? ini_dir "/" path[profile_count] : path[profile_count]); exit } }
+    END { if (profile_count>0) { print (isrel[1]==1 ? ini_dir "/" path[1] : path[1]) } }
     ' "$ini"
 }
 default_profile="$(find_default_profile)"
-if [[ -n "$default_profile" && -d "$HOME/.config/zen/$default_profile" ]]; then
-    default_profile="$HOME/.config/zen/$default_profile"
-else
-    default_profile="$HOME/.zen/${default_profile}"
+if [[ -z "$default_profile" ]]; then
+    echo "No zen profile found" >&2
+    exit 1
 fi
 
 echo $default_profile
