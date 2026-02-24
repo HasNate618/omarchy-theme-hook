@@ -56,6 +56,27 @@ set_zen_transparency() {
 }
 set_zen_transparency
 
+# Update zen-themes chrome.css variable to match theme background with 60% opacity
+update_zen_chrome_css() {
+    local themes_dir="$default_profile/chrome/zen-themes"
+    local bg="${primary_background#\#}"
+    local alpha_hex="99"
+    local value="#${bg}${alpha_hex}"
+    if [[ -d "$themes_dir" ]]; then
+        for css in "$themes_dir"/*/chrome.css; do
+            [[ -f "$css" ]] || continue
+            cp -n "$css" "$css.bak_$(date -u +%Y%m%dT%H%M%SZ)" || true
+            if grep -q -- '--mod.sameerasw-zen_transparency_color' "$css"; then
+                sed -E -i "s|(--mod.sameerasw-zen_transparency_color:[[:space:]]*)[^;]+;|\\1$value;|g" "$css"
+            else
+                awk -v val="$value" 'BEGIN{ins=0} /:root[[:space:]]*{/ && ins==0 {print; print "  --mod-sameerasw-zen_transparency_color: " val ";"; ins=1; next} {print}' "$css" > "$css.tmp" && mv "$css.tmp" "$css"
+            fi
+        done
+    fi
+}
+
+update_zen_chrome_css
+
 # Restart zen-browser to apply change and exit
 if pgrep -x "zen-browser" > /dev/null; then
     pkill -x "zen-browser" > /dev/null
@@ -91,6 +112,7 @@ cat > "$output_file" << EOF
 --color00: #${primary_background};
 --color01: #${primary_background};
 --color02: #${primary_background};
+--zen-transparency-color: #${primary_background}99;
 --color03: #${normal_white};
 --color04: #${bright_white};
 --color05: #${primary_foreground};
