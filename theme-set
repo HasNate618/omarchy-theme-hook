@@ -6,12 +6,17 @@
 input_file="$HOME/.config/omarchy/current/theme/colors.toml"
 
 if [[ ! -f "$input_file" ]]; then
-    error "colors.toml not found at $input_file. Ensure your theme is compatible with Omarchy 3.3+ and includes colors.toml."
+    # colors.toml is optional; fall back to other theme sources if missing
+    echo "[WARNING] colors.toml not found at $input_file. Falling back to other sources."
 fi
 
 # Extract color value from colors.toml (flat key=value format)
 extract_color() {
     local color_name="$1"
+    # If colors.toml is missing, return empty
+    if [[ ! -f "$input_file" ]]; then
+        return 0
+    fi
     awk -v color="$color_name" '
         $1 == color && /=/ {
             if (match($0, /#([0-9a-fA-F]{6})/)) {
@@ -43,7 +48,9 @@ error() {
 export -f success warning error skipped
 
 hex2rgb() {
-    hex_input=$1
+    hex_input="${1:-000000}"
+    hex_input="${hex_input#\#}"
+    hex_input="${hex_input,,}"
     r=$((16#${hex_input:0:2}))
     g=$((16#${hex_input:2:2}))
     b=$((16#${hex_input:4:2}))
