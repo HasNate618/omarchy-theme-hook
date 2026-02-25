@@ -2,7 +2,11 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" >/dev/null 2>&1 && pwd)"
 LOCAL_HOOK_PATH="${LOCAL_THEME_HOOK_PATH:-}"
+if [[ -z "$LOCAL_HOOK_PATH" && -d "$SCRIPT_DIR/.git" ]]; then
+    LOCAL_HOOK_PATH="$SCRIPT_DIR"
+fi
 TEMP_DIR="/tmp/theme-hook"
 REMOTE_REPO="https://github.com/imbypass/omarchy-theme-hook.git"
 HOOK_SOURCE=""
