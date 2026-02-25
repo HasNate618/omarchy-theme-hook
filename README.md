@@ -65,6 +65,8 @@ curl -fsSL https://imbypass.github.io/omarchy-theme-hook/uninstall.sh | bash
 #### My Firefox/Zen Browser isn't theming!
 -  Firefox and Zen Browser may require manual enabling of legacy userchrome styling.
 -  To do this, open the browser, go to `about:config`, search for `toolkit.legacyUserProfileCustomizations.stylesheets`, and set it to `true`.
+-  Zen live transparency updates (without restart) require launching Zen with Marionette system access:
+   `zen-browser --marionette -remote-allow-system-access`
 
 #### My Discord isn't theming!
 1. Make sure you are using a third-party Discord client, like Vesktop or Equibop.

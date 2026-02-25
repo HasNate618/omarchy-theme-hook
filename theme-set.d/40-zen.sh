@@ -19,12 +19,12 @@ find_default_profile() {
     ini_dir="$(dirname "$ini")"
     # prefer profile with Default=1, otherwise use first Profile Path
     awk -F= -v ini_dir="$ini_dir" '
-    BEGIN { profile_count=0 }
+    BEGIN { profile_count=0; printed=0 }
     /^\[Profile/ { profile_count++; path[profile_count]=""; isrel[profile_count]=1 }
     /^Path=/ { path[profile_count]=$2 }
     /^IsRelative=/ { isrel[profile_count]=$2 }
-    /^Default=/ { if ($2==1) { print (isrel[profile_count]==1 ? ini_dir "/" path[profile_count] : path[profile_count]); exit } }
-    END { if (profile_count>0) { print (isrel[1]==1 ? ini_dir "/" path[1] : path[1]) } }
+    /^Default=/ { if ($2==1) { out = (isrel[profile_count]==1 ? ini_dir "/" path[profile_count] : path[profile_count]); print out; printed=1; exit } }
+    END { if (printed==0 && profile_count>0) { out = (isrel[1]==1 ? ini_dir "/" path[1] : path[1]); print out } }
     ' "$ini"
 }
 default_profile="$(find_default_profile)"
@@ -33,62 +33,195 @@ if [[ -z "$default_profile" ]]; then
     exit 1
 fi
 
-echo $default_profile
+resolve_background_hex() {
+    local alacritty_file="$HOME/.config/omarchy/current/theme/alacritty.toml"
+    local colors_file="$HOME/.config/omarchy/current/theme/colors.toml"
+    local bg=""
+
+    if [[ -f "$alacritty_file" ]]; then
+        bg="$(awk '
+            /^\[colors\.primary\]/ { in_primary=1; next }
+            /^\[/ { in_primary=0 }
+            in_primary && match($0, /background[[:space:]]*=[[:space:]]*"#([0-9a-fA-F]{6})"/, m) { print m[1]; exit }
+        ' "$alacritty_file")"
+    fi
+
+    if [[ -z "$bg" && -f "$colors_file" ]]; then
+        bg="$(awk '
+            match($0, /^background[[:space:]]*=[[:space:]]*"#([0-9a-fA-F]{6})"/, m) { print m[1]; exit }
+        ' "$colors_file")"
+    fi
+
+    if [[ -z "$bg" ]]; then
+        bg="${primary_background#\#}"
+    fi
+
+    if [[ "$bg" =~ ^[0-9a-fA-F]{6}$ ]]; then
+        echo "$bg"
+        return 0
+    fi
+    return 1
+}
+
+background_hex="$(resolve_background_hex)"
+if [[ -z "$background_hex" ]]; then
+    echo "Unable to resolve valid background color for Zen transparency" >&2
+    exit 1
+fi
+transparency_value="#${background_hex}99"
 
 # Update only mod.sameerasw.zen_transparency_color to match background with 60% opacity
 set_zen_transparency() {
-    local prefs_file="$default_profile/prefs.js"
     local pref_name='mod.sameerasw.zen_transparency_color'
-    local bg="${primary_background#\#}"
-    local alpha_hex="99"  # 60% opacity
-    local value="#${bg}${alpha_hex}"
-    mkdir -p "$(dirname "$prefs_file")"
-    if [[ -f "$prefs_file" ]]; then
-        if grep -q "user_pref(\"$pref_name\"" "$prefs_file"; then
-            # replace any existing user_pref line for this pref with the new value
-            sed -i.bak "s|user_pref(\\\"$pref_name\\\".*);|user_pref(\\\"$pref_name\\\", \\\"$value\\\");|g" "$prefs_file"
+    local pref_file=""
+    for pref_file in "$default_profile/user.js" "$default_profile/prefs.js"; do
+        mkdir -p "$(dirname "$pref_file")"
+        if [[ -f "$pref_file" ]]; then
+            if grep -q "user_pref(\"$pref_name\"" "$pref_file"; then
+                sed -i.bak "s|user_pref(\\\"$pref_name\\\".*);|user_pref(\\\"$pref_name\\\", \\\"$transparency_value\\\");|g" "$pref_file"
+            else
+                echo "user_pref(\"$pref_name\", \"$transparency_value\");" >> "$pref_file"
+            fi
         else
-            echo "user_pref(\"$pref_name\", \"$value\");" >> "$prefs_file"
+            echo "user_pref(\"$pref_name\", \"$transparency_value\");" > "$pref_file"
         fi
-    else
-        echo "user_pref(\"$pref_name\", \"$value\");" > "$prefs_file"
-    fi
+    done
 }
-set_zen_transparency
 
 # Update zen-themes chrome.css variable to match theme background with 60% opacity
 update_zen_chrome_css() {
     local themes_dir="$default_profile/chrome/zen-themes"
-    local bg="${primary_background#\#}"
-    local alpha_hex="99"
-    local value="#${bg}${alpha_hex}"
     if [[ -d "$themes_dir" ]]; then
         for css in "$themes_dir"/*/chrome.css; do
             [[ -f "$css" ]] || continue
             cp -n "$css" "$css.bak_$(date -u +%Y%m%dT%H%M%SZ)" || true
-            if grep -q -- '--mod.sameerasw-zen_transparency_color' "$css"; then
-                sed -E -i "s|(--mod.sameerasw-zen_transparency_color:[[:space:]]*)[^;]+;|\\1$value;|g" "$css"
+            if grep -q -- '--mod-sameerasw-zen_transparency_color' "$css"; then
+                sed -E -i "s|(--mod-sameerasw-zen_transparency_color:[[:space:]]*)[^;]+;|\\1$transparency_value;|g" "$css"
             else
-                awk -v val="$value" 'BEGIN{ins=0} /:root[[:space:]]*{/ && ins==0 {print; print "  --mod-sameerasw-zen_transparency_color: " val ";"; ins=1; next} {print}' "$css" > "$css.tmp" && mv "$css.tmp" "$css"
+                awk -v val="$transparency_value" 'BEGIN{ins=0} /:root[[:space:]]*{/ && ins==0 {print; print "  --mod-sameerasw-zen_transparency_color: " val ";"; ins=1; next} {print}' "$css" > "$css.tmp" && mv "$css.tmp" "$css"
             fi
         done
     fi
 }
 
+find_marionette_port() {
+    local port="${ZEN_MARIONETTE_PORT:-}"
+    local pref_file=""
+    if [[ "$port" =~ ^[0-9]+$ ]]; then
+        echo "$port"
+        return 0
+    fi
+    for pref_file in "$default_profile/user.js" "$default_profile/prefs.js"; do
+        [[ -f "$pref_file" ]] || continue
+        port="$(sed -nE 's/.*user_pref\\(\"marionette\\.port\",[[:space:]]*([0-9]+)\\);/\\1/p' "$pref_file" | tail -n1)"
+        if [[ "$port" =~ ^[0-9]+$ ]]; then
+            echo "$port"
+            return 0
+        fi
+    done
+    echo "2828"
+}
+
+zen_running() {
+    pgrep -x "zen-browser" > /dev/null || pgrep -x "zen" > /dev/null
+}
+
+find_python_bin() {
+    command -v python3 >/dev/null 2>&1 && { echo "python3"; return 0; }
+    command -v python >/dev/null 2>&1 && { echo "python"; return 0; }
+    return 1
+}
+
+apply_live_marionette() {
+    local port
+    local py
+    port="$(find_marionette_port)"
+    py="$(find_python_bin)" || return 1
+    "$py" - "$port" "$transparency_value" <<'PY'
+import json
+import socket
+import sys
+
+port = int(sys.argv[1])
+value = sys.argv[2]
+
+def recv_message(sock):
+    buffer = b""
+    while b":" not in buffer:
+        chunk = sock.recv(1)
+        if not chunk:
+            raise RuntimeError("Marionette closed before handshake")
+        buffer += chunk
+    length_part, remainder = buffer.split(b":", 1)
+    length = int(length_part)
+    payload = remainder
+    while len(payload) < length:
+        chunk = sock.recv(length - len(payload))
+        if not chunk:
+            raise RuntimeError("Marionette closed before full message")
+        payload += chunk
+    return json.loads(payload.decode("utf-8"))
+
+def send_command(sock, msg_id, command, params):
+    body = json.dumps([0, msg_id, command, params], separators=(",", ":"))
+    sock.sendall(f"{len(body)}:{body}".encode("utf-8"))
+    response = recv_message(sock)
+    if not isinstance(response, list) or len(response) < 4:
+        raise RuntimeError(f"Unexpected response for {command}: {response!r}")
+    if response[1] != msg_id:
+        raise RuntimeError(f"Unexpected response id for {command}: {response[1]!r}")
+    if response[2] is not None:
+        message = response[2].get("message", response[2])
+        raise RuntimeError(f"{command} failed: {message}")
+    return response[3]
+
+try:
+    sock = socket.create_connection(("127.0.0.1", port), timeout=2)
+    sock.settimeout(5)
+    recv_message(sock)
+    send_command(sock, 1, "WebDriver:NewSession", {"capabilities": {"alwaysMatch": {}, "firstMatch": [{}]}})
+    send_command(sock, 2, "Marionette:SetContext", {"value": "chrome"})
+    result = send_command(
+        sock,
+        3,
+        "WebDriver:ExecuteScript",
+        {
+            "script": "const value = arguments[0]; Services.prefs.setStringPref(\"mod.sameerasw.zen_transparency_color\", value); const windows = []; const e = Services.wm.getEnumerator(\"navigator:browser\"); while (e.hasMoreElements()) { const win = e.getNext(); const root = win.document.documentElement; root.style.setProperty(\"--mod-sameerasw-zen_transparency_color\", value, \"important\"); root.style.setProperty(\"--zen-main-browser-background\", value, \"important\"); windows.push(root.style.getPropertyValue(\"--mod-sameerasw-zen_transparency_color\")); } return { pref: Services.prefs.getStringPref(\"mod.sameerasw.zen_transparency_color\", \"\"), windows };",
+            "args": [value],
+        },
+    )
+    written = None
+    if isinstance(result, dict):
+        written = result.get("pref") or result.get("value")
+    if written != value:
+        raise RuntimeError(f"Marionette wrote unexpected value: {written!r}")
+    if isinstance(result, dict):
+        for window_value in result.get("windows", []):
+            if window_value and window_value.strip() != value:
+                raise RuntimeError(f"Marionette window value mismatch: {window_value!r}")
+    try:
+        send_command(sock, 4, "WebDriver:DeleteSession", {})
+    except Exception:
+        pass
+    sock.close()
+except Exception as exc:
+    print(str(exc), file=sys.stderr)
+    sys.exit(1)
+PY
+}
+
+set_zen_transparency
 update_zen_chrome_css
 
-# Restart zen-browser to apply change and exit
-if pgrep -x "zen-browser" > /dev/null; then
-    pkill -x "zen-browser" > /dev/null
-    sleep 2
-    if pgrep -x "zen-browser" > /dev/null; then
-        pkill -9 -x "zen-browser" > /dev/null
-        sleep 1
+if zen_running; then
+    if apply_live_marionette; then
+        success "Zen Browser transparency updated live via Marionette!"
+        exit 0
     fi
-    zen-browser > /dev/null &
+    require_restart "zen-browser"
+    warning "Zen is running but Marionette live update failed. Start Zen with --marionette -remote-allow-system-access to update without restart."
 fi
 
-require_restart "zen-browser"
 success "Zen Browser transparency updated!"
 exit 0
 
