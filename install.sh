@@ -40,15 +40,15 @@ fi
 rm -rf $HOME/.local/share/omarchy/bin/theme-hook-update > /dev/null 2>&1
 
 # Create a theme control alias
-mv -f "$HOOK_SOURCE/thctl" $HOME/.local/share/omarchy/bin/thctl
+cp -f "$HOOK_SOURCE/thctl" "$HOME/.local/share/omarchy/bin/thctl"
 chmod +x $HOME/.local/share/omarchy/bin/thctl
 
 # Copy theme-set hook to Omarchy hooks directory
-mv -f "$HOOK_SOURCE/theme-set" $HOME/.config/omarchy/hooks/
+cp -f "$HOOK_SOURCE/theme-set" "$HOME/.config/omarchy/hooks/"
 
 # Create theme hook directory and copy scripts
 mkdir -p $HOME/.config/omarchy/hooks/theme-set.d/
-mv -f "$HOOK_SOURCE/theme-set.d/"* $HOME/.config/omarchy/hooks/theme-set.d/
+cp -a "$HOOK_SOURCE/theme-set.d/." "$HOME/.config/omarchy/hooks/theme-set.d/"
 
 # Remove any new temp files
 if [[ "$CLONED_REMOTE" == true ]]; then
