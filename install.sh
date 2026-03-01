@@ -60,6 +60,7 @@ chmod +x $HOME/.config/omarchy/hooks/theme-set
 chmod +x $HOME/.config/omarchy/hooks/theme-set.d/*
 #chmod -x $HOME/.config/omarchy/hooks/theme-set.d/10-spotify.sh
 #chmod -x $HOME/.config/omarchy/hooks/theme-set.d/40-cava.sh
+# chmod -x $HOME/.config/omarchy/hooks/theme-set.d/30-vscode.sh
 
 # Update Omarchy theme
 echo "Running theme hook.."
