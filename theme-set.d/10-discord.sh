@@ -25,6 +25,7 @@ cat > "$output_file" << EOF
     @import url("https://imbypass.github.io/base16-discord/omarchy-discord.theme.css");
 
     :root {
+        --background-primary: rgba(${rgb_primary_background}, 0.6);
         --color00: #${primary_background};
         --color01: #${primary_background};
         --color02: #${primary_background};
@@ -82,6 +83,6 @@ check_for_theme() {
     fi
 }
 
-check_for_theme
+create_dynamic_theme
 success "Discord theme updated!"
 exit 0
