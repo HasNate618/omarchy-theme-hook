@@ -5,7 +5,7 @@
 
 # Omarchy Theme Hook
    
-[![Themed Apps](https://img.shields.io/badge/themed_apps-15-blue?style=for-the-badge&labelColor=0C0D11&color=A5CAB8)](https://github.com/imbypass/omarchy-theme-hook/tree/main/theme-set.d)
+[![Themed Apps](https://img.shields.io/badge/themed_apps-16-blue?style=for-the-badge&labelColor=0C0D11&color=A5CAB8)](https://github.com/imbypass/omarchy-theme-hook/tree/main/theme-set.d)
 [![GitHub Issues](https://img.shields.io/github/issues/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EB7A73)](https://github.com/imbypass/omarchy-theme-hook/issues)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=8ECD84)](https://github.com/imbypass/omarchy-theme-hook/commits/main/)
 [![GitHub Stars](https://img.shields.io/github/stars/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EFBE71)](https://github.com/imbypass/omarchy-theme-hook/stargazers)
@@ -39,6 +39,7 @@ You can access it via the terminal by running `thctl`.
 - Discord
 - Firefox
 - GTK (requires `adw-gtk-theme` from the AUR)
+- Pi (TUI theme sync)
 - QT6
 - Spotify
 - Steam
@@ -83,6 +84,10 @@ A Spotify client update may have caused Spicetify to stop working. You can fix t
 
 #### I get a "colors.toml not found" error!
 Omarchy 3.3+ requires themes to include `colors.toml`. Update your theme to a version compatible with Omarchy 3.3+, or add a valid `colors.toml` file to the theme directory.
+
+#### My Pi TUI isn't matching my omarchy theme!
+- Pi uses its own theme system (`~/.pi/agent/themes/`). The hook generates `omarchy.json` from your omarchy `colors.toml` every time you switch themes.
+- If Pi doesn't pick up the new theme, select it via `/settings` in Pi or set `"theme": "omarchy"` in `~/.pi/agent/settings.json`.
 
 #### What if I encounter issues?
 If you encounter any issues, please open an issue on the GitHub repository.
