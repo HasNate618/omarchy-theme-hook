@@ -95,28 +95,28 @@ async def main():
     mac = os.environ.get("GOVEE_DEVICE_MAC", "")
     name = os.environ.get("GOVEE_DEVICE_NAME", "")
     r, g, b = find_best_accent()
-    brightness = int(os.environ.get("GOVEE_BRIGHTNESS", 255))
+    brightness = int(os.environ.get("GOVEE_BRIGHTNESS", 254))
 
     for attempt in range(5):
         try:
             device = None
             if mac:
-                device = await BleakScanner.find_device_by_address(mac, timeout=8)
+                device = await BleakScanner.find_device_by_address(mac, timeout=5)
             if not device and name:
-                device = await BleakScanner.find_device_by_name(name, timeout=8)
+                device = await BleakScanner.find_device_by_name(name, timeout=5)
             if not device:
                 await asyncio.sleep(1)
                 continue
 
-            async with BleakClient(device, timeout=15) as client:
+            async with BleakClient(device, timeout=10) as client:
                 await client.write_gatt_char(CHAR_UUID, make_packet([0x33, 0x01, 0x01]))
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.05)
                 await client.write_gatt_char(CHAR_UUID, make_packet([0x33, 0x05, 0x02, r, g, b]))
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.05)
                 await client.write_gatt_char(CHAR_UUID, make_packet([0x33, 0x04, brightness]))
         except Exception:
             if attempt < 4:
-                await asyncio.sleep(1.5 * (attempt + 1))
+                await asyncio.sleep(1.5)
             continue
 
         sys.exit(0)
