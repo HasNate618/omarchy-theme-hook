@@ -5,7 +5,7 @@
 
 # Omarchy Theme Hook
    
-[![Themed Apps](https://img.shields.io/badge/themed_apps-16-blue?style=for-the-badge&labelColor=0C0D11&color=A5CAB8)](https://github.com/imbypass/omarchy-theme-hook/tree/main/theme-set.d)
+[![Themed Apps](https://img.shields.io/badge/themed_apps-17-blue?style=for-the-badge&labelColor=0C0D11&color=A5CAB8)](https://github.com/imbypass/omarchy-theme-hook/tree/main/theme-set.d)
 [![GitHub Issues](https://img.shields.io/github/issues/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EB7A73)](https://github.com/imbypass/omarchy-theme-hook/issues)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=8ECD84)](https://github.com/imbypass/omarchy-theme-hook/commits/main/)
 [![GitHub Stars](https://img.shields.io/github/stars/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EFBE71)](https://github.com/imbypass/omarchy-theme-hook/stargazers)
@@ -46,6 +46,7 @@ You can access it via the terminal by running `thctl`.
 - Superfile
 - Vicinae
 - VS Code
+- Govee (BLE smart lights)
 - Waybar
 - Windsurf
 - Zed
@@ -84,6 +85,17 @@ A Spotify client update may have caused Spicetify to stop working. You can fix t
 
 #### I get a "colors.toml not found" error!
 Omarchy 3.3+ requires themes to include `colors.toml`. Update your theme to a version compatible with Omarchy 3.3+, or add a valid `colors.toml` file to the theme directory.
+
+#### My Govee light isn't updating!
+1. The hook uses BLE directly via `bleak`. Install it with `pip install bleak`.
+2. Create `~/.config/govee/env` with your device info:
+   ```
+   GOVEE_DEVICE_MAC=AA:BB:CC:DD:EE:FF
+   GOVEE_DEVICE_NAME=ihoment_H6181_xxxx
+   GOVEE_BRIGHTNESS=255
+   ```
+   Only `GOVEE_DEVICE_MAC` or `GOVEE_DEVICE_NAME` is required; brightness defaults to max.
+3. BLE on Linux can be flaky — the hook retries 5 times with backoff.
 
 #### My Pi TUI isn't matching my omarchy theme!
 - Pi uses its own theme system (`~/.pi/agent/themes/`). The hook generates `omarchy.json` from your omarchy `colors.toml` every time you switch themes.
